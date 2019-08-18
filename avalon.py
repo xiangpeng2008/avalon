@@ -1,28 +1,42 @@
+import os
+from flask import Flask, redirect, url_for,request
+from flask_dance.contrib.google import make_google_blueprint, google
 from dash import Dash
+
+server = Flask(__name__)
+server.secret_key = os.environ.get("FLASK_SECRET_KEY", "supersekrit")
+server.config["GOOGLE_OAUTH_CLIENT_ID"] = os.environ.get("GOOGLE_OAUTH_CLIENT_ID")
+server.config["GOOGLE_OAUTH_CLIENT_SECRET"] = os.environ.get("GOOGLE_OAUTH_CLIENT_SECRET")
+google_bp = make_google_blueprint(scope=["profile", "email"])
+server.register_blueprint(google_bp, url_prefix="/login")
+
+@server.route("/")
+def index():
+    if not google.authorized:
+        return redirect(url_for("google.login"))
+    resp = google.get("/oauth2/v1/userinfo")
+    assert resp.ok, resp.text
+    return redirect('http://ivoryhuo.com/avalon')
+
+app = Dash(
+    __name__,
+    routes_pathname_prefix='/avalon/'
+)
+
 import json
 import dash_core_components as dcc
 import dash_html_components as html
 from dash.dependencies import Input, Output, State
-# from flask import request,Flask
-from flask import request
-# from dash_google_auth import GoogleOAuth
 
-# server = Flask(__name__)
-# server.config.update({
-    # 'GOOGLE_OAUTH_CLIENT_ID': '393849065511-j9mq7bms2e8a13r94onvjdhel6vl8go3.apps.googleusercontent.com',
-    # 'GOOGLE_OAUTH_CLIENT_SECRET': 'pUEBVllmHoHGstviLMVGCADs',
-    # })
-
-
-# authorized_emails = []
-# additional_scopes = []
 
 rowNb=12
 fontSize=20
-# app = Dash(__name__, server=server, url_base_pathname='/', meta_tags=[ {"name": "viewport", "content": "width=device-width, initial-scale=1"} ])
-app = Dash(__name__, meta_tags=[ {"name": "viewport", "content": "width=device-width, initial-scale=1"} ])
-# app.secret_key = 'super23'
-# auth = GoogleOAuth(app, authorized_emails, additional_scopes)
+app = Dash(
+        __name__, 
+        server=server,
+        meta_tags=[ {"name": "viewport", "content": "width=device-width, initial-scale=1"} ],
+        )
+
 app.layout = html.Div([
     html.Div(id='cache_history', style={'display': 'none'}),
     dcc.Textarea(
@@ -46,7 +60,11 @@ app.layout = html.Div([
             State('cache_history', 'children')]
         )
 def update_output_div(click, input_value, existe_value):
-    print(request.remote_addr)
+    if not google.authorized:
+        return json.dumps(['not logged in, go to ivoryhuo.com']),'ivoryhuo.com'
+    resp = google.get("/oauth2/v1/userinfo")
+    assert resp.ok, resp.text
+    print(resp.json()['id'])
     if not input_value:
         return existe_value,''
     if not existe_value:
@@ -65,6 +83,3 @@ def update_output_div(existe_value):
         return '\n'.join(json.loads(existe_value))
     return 'Interaction history'
 
-if __name__ == '__main__':
-    # app.run_server(debug=True, port = 7777)
-    app.run_server(debug=True,host='0.0.0.0',port = 7777)
