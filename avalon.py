@@ -3,8 +3,9 @@ from flask import Flask, redirect, url_for,request
 from flask_dance.contrib.google import make_google_blueprint, google
 from dash import Dash
 from qpython import qconnection
+import pandas as pd
 
-q = qconnection.QConnection(host = 'localhost', port = 7778)
+q = qconnection.QConnection(host = 'localhost', port = 7778, pandas = True)
 q.open()
 
 server = Flask(__name__)
@@ -23,12 +24,8 @@ def index():
         assert resp.ok, resp.text
     except:
         return redirect(url_for("google.login"))
-    return redirect('http://ivoryhuo.com/avalon')
-
-app = Dash(
-    __name__,
-    routes_pathname_prefix='/avalon/'
-)
+    # return redirect('http://ivoryhuo.com/avalon/')
+    return redirect('localhost:7777/avalon')
 
 import json
 import dash_core_components as dcc
@@ -36,27 +33,39 @@ import dash_html_components as html
 from dash.dependencies import Input, Output, State
 
 
-rowNb=12
 fontSize=20
+# external_stylesheets = ['https://www.w3schools.com/w3css/4/w3.css']
+
 app = Dash(
         __name__, 
+        # external_stylesheets=external_stylesheets,
         server=server,
+        routes_pathname_prefix='/avalon/',
         meta_tags=[ {"name": "viewport", "content": "width=device-width, initial-scale=1"} ],
         )
 
-app.layout = html.Div([
-    html.Div(id='cache_history', style={'display': 'none'}),
-    dcc.Textarea(
-        id='history',
-        readOnly=True,
-        className='textarea',
-        rows=rowNb,
-        style={'color': 'blue', 'fontSize': fontSize-3},
-        ),
-    html.Div(),
-    dcc.Input(id='input_cmd', type='text', placeholder='Enter your command here.',value='', debounce=True, className='input', style={'fontSize': fontSize},),
-        
-    html.Button(id='submit_button', n_clicks=0, children='Submit', className='button', style={'fontSize': fontSize}),
+app.layout = html.Div( [
+    html.Div([
+        dcc.Dropdown(
+            id='input_cmd',
+            options=[
+                {'label': 'get records', 'value': 'get records'},
+                {'label': 'who', 'value': 'who'},
+                {'label': 'refresh_players', 'value': 'refresh_players'},
+                {'label': 'set_nb_people *', 'value': 'set_nb_people'},
+                {'label': 'I\'m *', 'value': 'im'},
+                {'label': 'join', 'value': 'join'},
+                {'label': 'newgame', 'value': 'newgame'},
+                {'label': 'vote success', 'value': 'vote success'},
+                {'label': 'vote fail', 'value': 'vote fail'},
+                ],
+            value='',
+            style={'fontSize': fontSize},
+            className='input',
+            ),
+        html.Button(id='submit_button', n_clicks=0, children='Submit', className='button', style={'fontSize': fontSize}),]),
+    html.Div(id='cache_history', style={'display': 'none'}, children="[\"Interaction history\"]"),
+    html.Div(id='history'),
     ])
 
 @app.callback(
@@ -71,30 +80,32 @@ def update_output_div(click, input_value, existe_value):
         return json.dumps(['not logged in, go to ivoryhuo.com']),'ivoryhuo.com'
     resp = google.get("/oauth2/v1/userinfo")
     assert resp.ok, resp.text
-    print(resp.json()['id'])
     if not input_value:
         return existe_value,''
     qres=''
-    if not existe_value:
-        res=['Interaction history']
+    command='python["'+resp.json()['id']+'";"'+input_value+'"]'
+    print('command: '+command)
+    # try:
+    qres=q.sendSync(command)
+    # qres=q.sendSync(command).decode('UTF-8')
+    print("qres is")
+    print(qres)
+# except:
+    # qres='unable to connect or illegal command'
+    if isinstance(qres, pd.core.frame.DataFrame):
+        qres=qres.to_string(index=False)
     else:
-        command='python["'+resp.json()['id']+'";"'+input_value+'"]'
-        print('command '+command)
-        try:
-            qres=q.sendSync(command).decode('UTF-8')
-            print(qres)
-        except:
-            qres='unable to connect or illegal command'
-        res=json.loads(existe_value)
-    return [json.dumps(([input_value,qres]+res)),'']
+        qres=qres.decode('UTF-8')
+    
+    res=json.loads(existe_value)
+    return [json.dumps((["*"+input_value+"*","```py\n"+qres+"\n```"]+res)),'']
 
 
 @app.callback(
-        Output('history', 'value'), 
+        Output('history', 'children'), 
         [Input('cache_history','children')],
         )
 def update_output_div(existe_value):
-    if existe_value:
-        return '\n'.join(json.loads(existe_value))
-    return 'Interaction history'
-
+    res = '\n'.join(json.loads(existe_value))
+    print(res)
+    return dcc.Markdown(res)

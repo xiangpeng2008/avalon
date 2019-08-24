@@ -1,3 +1,3 @@
-﻿input{padding:8px;width:60%;float:left}
-textarea{width:100%;float:left}
-button{padding:8px;width:30%;float:right}
+﻿.input{padding:6px;width:60%;float:left}
+.button{padding:10px;width:30%;margin-left: 5%}
+.fullLine{padding:80px;width:100%}
