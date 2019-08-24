@@ -2,6 +2,10 @@ import os
 from flask import Flask, redirect, url_for,request
 from flask_dance.contrib.google import make_google_blueprint, google
 from dash import Dash
+from qpython import qconnection
+
+q = qconnection.QConnection(host = 'localhost', port = 7778)
+q.open()
 
 server = Flask(__name__)
 server.secret_key = os.environ.get("FLASK_SECRET_KEY", "supersekrit")
@@ -14,8 +18,11 @@ server.register_blueprint(google_bp, url_prefix="/login")
 def index():
     if not google.authorized:
         return redirect(url_for("google.login"))
-    resp = google.get("/oauth2/v1/userinfo")
-    assert resp.ok, resp.text
+    try:
+        resp = google.get("/oauth2/v1/userinfo")
+        assert resp.ok, resp.text
+    except:
+        return redirect(url_for("google.login"))
     return redirect('http://ivoryhuo.com/avalon')
 
 app = Dash(
@@ -67,11 +74,19 @@ def update_output_div(click, input_value, existe_value):
     print(resp.json()['id'])
     if not input_value:
         return existe_value,''
+    qres=''
     if not existe_value:
         res=['Interaction history']
     else:
-        res=json.loads(existe_value)[1-rowNb:]
-    return [json.dumps(res+[input_value]),'']
+        command='python["'+resp.json()['id']+'";"'+input_value+'"]'
+        print('command '+command)
+        try:
+            qres=q.sendSync(command).decode('UTF-8')
+            print(qres)
+        except:
+            qres='unable to connect or illegal command'
+        res=json.loads(existe_value)
+    return [json.dumps(([input_value,qres]+res)),'']
 
 
 @app.callback(
