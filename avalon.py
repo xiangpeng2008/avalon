@@ -4,6 +4,7 @@ from flask_dance.contrib.google import make_google_blueprint, google
 from dash import Dash
 from qpython import qconnection
 import pandas as pd
+import numpy as np
 
 q = qconnection.QConnection(host = 'localhost', port = 7778, pandas = True)
 q.open()
@@ -25,7 +26,7 @@ def index():
     except:
         return redirect(url_for("google.login"))
     # return redirect('http://ivoryhuo.com/avalon/')
-    return redirect('localhost:7777/avalon')
+    return redirect('localhost:7777/avalon/')
 
 import json
 import dash_core_components as dcc
@@ -47,58 +48,67 @@ app = Dash(
 app.layout = html.Div( [
     html.Div([
         dcc.Dropdown(
-            id='input_cmd',
+            id='input_option',
             options=[
-                {'label': 'get records', 'value': 'get records'},
-                {'label': 'who', 'value': 'who'},
-                {'label': 'refresh_players', 'value': 'refresh_players'},
-                {'label': 'set_nb_people *', 'value': 'set_nb_people'},
-                {'label': 'I\'m *', 'value': 'im'},
-                {'label': 'join', 'value': 'join'},
-                {'label': 'newgame', 'value': 'newgame'},
-                {'label': 'vote success', 'value': 'vote success'},
-                {'label': 'vote fail', 'value': 'vote fail'},
+                {'label': 'vote success', 'value': 'vote[`success]'},#投成功票
+                {'label': 'vote fail', 'value': 'vote[`fail]'},#投失败票
+                {'label': 'show game progress', 'value': 'records'},#游戏进度
+                {'label': 'assassinate *', 'value': 'assassinate'},#行刺
+                {'label': 'show people on this table', 'value': 'string value id2names'},#玩家们
+                {'label': 'newgame', 'value': 'newgame`'},#开局
+                {'label': 'show my profile', 'value': 'who`'},#我的身份
+                {'label': 'join', 'value': 'join`'},#加入
+                {'label': 'I\'m *', 'value': 'im'},#我是
+                {'label': 'set number of people *', 'value': 'set_nb_people'},#设定游戏人数 
+                {'label': '!!!reset players', 'value': 'refresh_players`'},
                 ],
             value='',
             style={'fontSize': fontSize},
             className='input',
             ),
+        dcc.Input(id='input_cmd', type='text', placeholder='Enter your text here.',value='', debounce=True, className='input_cmd', style={'fontSize': fontSize},),
         html.Button(id='submit_button', n_clicks=0, children='Submit', className='button', style={'fontSize': fontSize}),]),
     html.Div(id='cache_history', style={'display': 'none'}, children="[\"Interaction history\"]"),
     html.Div(id='history'),
     ])
 
 @app.callback(
-        [ Output('cache_history', 'children'), Output('input_cmd', 'value'), ], 
+        [ Output('cache_history', 'children'), Output('input_option', 'value'),Output('input_cmd', 'value'), ], 
         [Input('submit_button','n_clicks')],
         [
+            State('input_option', 'value'),
             State('input_cmd', 'value'),
             State('cache_history', 'children')]
         )
-def update_output_div(click, input_value, existe_value):
+def update_output_div(click, input_opt, input_cmd, existe_value):
     if not google.authorized:
-        return json.dumps(['not logged in, go to ivoryhuo.com']),'ivoryhuo.com'
-    resp = google.get("/oauth2/v1/userinfo")
-    assert resp.ok, resp.text
-    if not input_value:
-        return existe_value,''
+        return json.dumps(['not logged in, please go to click [ivoryhuo.com](http://ivoryhuo.com) to login']),'',''
+    try:
+        resp = google.get("/oauth2/v1/userinfo")
+        assert resp.ok, resp.text
+    except:
+        return json.dumps(['google session expired, please click [ivoryhuo.com](http://ivoryhuo.com) to relogin']),'',''
+    if not input_opt:
+        return existe_value,'',''
     qres=''
-    command='python["'+resp.json()['id']+'";"'+input_value+'"]'
+    command='python["'+resp.json()['id']+'";"'+input_opt+('[\\"'+input_cmd.replace(" ", "")+'\\"]' if input_cmd else '')+'"]'
     print('command: '+command)
-    # try:
     qres=q.sendSync(command)
-    # qres=q.sendSync(command).decode('UTF-8')
     print("qres is")
     print(qres)
-# except:
-    # qres='unable to connect or illegal command'
     if isinstance(qres, pd.core.frame.DataFrame):
+        str_df = qres.select_dtypes([np.object])
+        str_df = str_df.stack().str.decode('utf-8').unstack()
+        for col in str_df:
+            qres[col] = str_df[col]
         qres=qres.to_string(index=False)
+    elif isinstance(qres, list):
+        qres='\n'.join([i.decode('UTF-8') for i in qres])
     else:
         qres=qres.decode('UTF-8')
     
     res=json.loads(existe_value)
-    return [json.dumps((["*"+input_value+"*","```py\n"+qres+"\n```"]+res)),'']
+    return [json.dumps((["*"+input_opt+"*","```bash\n"+qres+"\n```"]+res)),'','']
 
 
 @app.callback(
