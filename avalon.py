@@ -25,8 +25,8 @@ def index():
         assert resp.ok, resp.text
     except:
         return redirect(url_for("google.login"))
-    # return redirect('http://ivoryhuo.com/avalon/')
-    return redirect('localhost:7777/avalon/')
+    return redirect('http://ivoryhuo.com/avalon/')
+    # return redirect('localhost:7777/avalon/')
 
 import json
 import dash_core_components as dcc
@@ -35,11 +35,9 @@ from dash.dependencies import Input, Output, State
 
 
 fontSize=20
-# external_stylesheets = ['https://www.w3schools.com/w3css/4/w3.css']
 
 app = Dash(
         __name__, 
-        # external_stylesheets=external_stylesheets,
         server=server,
         routes_pathname_prefix='/avalon/',
         meta_tags=[ {"name": "viewport", "content": "width=device-width, initial-scale=1"} ],
@@ -64,7 +62,7 @@ app.layout = html.Div( [
                 ],
             value='',
             style={'fontSize': fontSize},
-            className='input',
+            className='fullScreen',
             ),
         dcc.Input(id='input_cmd', type='text', placeholder='Enter your text here.',value='', debounce=True, className='input_cmd', style={'fontSize': fontSize},),
         html.Button(id='submit_button', n_clicks=0, children='Submit', className='button', style={'fontSize': fontSize}),]),
@@ -108,7 +106,7 @@ def update_output_div(click, input_opt, input_cmd, existe_value):
         qres=qres.decode('UTF-8')
     
     res=json.loads(existe_value)
-    return [json.dumps((["*"+input_opt+"*","```bash\n"+qres+"\n```"]+res)),'','']
+    return [json.dumps((["*"+input_opt+" "+input_cmd+"*","```bash\n"+qres+"\n```"]+res)),'','']
 
 
 @app.callback(
