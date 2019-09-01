@@ -5,4 +5,5 @@ export GOOGLE_OAUTH_CLIENT_SECRET=pUEBVllmHoHGstviLMVGCADs
 export OAUTHLIB_RELAX_TOKEN_SCOPE=true
 export OAUTHLIB_INSECURE_TRANSPORT=true
 export FLASK_ENV=development
-flask run --host=0.0.0.0 --port=7777 --debugger
+#flask run --host=0.0.0.0 --port=7777 --debugger
+flask run --host=0.0.0.0 --port=7777

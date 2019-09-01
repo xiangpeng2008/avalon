@@ -39,29 +39,36 @@ newgame:{
 
 python:{[id;command] 
   `last_id set `$id; 
-  `last_name set id2names[last_id];
-  :get lower command;};
-
-im: {[x] id2names[last_id]:`$x;:"you are ",x;};
-
-join:{
-  if[last_id in key onTableId2index; :"you already joined";];
-  if[((count onTableId2index)>=count rols_this_game); :"you are too late! All ",(string count rols_this_game)," seats are occupied";];
-  onTableId2index[last_id]:count onTableId2index;
-  :(string last_name)," you have joined successfully ! ", (string count onTableId2index)," people joined now";
+  `last_name set id2names[get `last_id];
+  show res:get lower command;
+  :res;
   };
 
+im: {[x] id2names[get `last_id]:`$x;:"you are ",x;};
+
+join:{
+  if[(get `last_id) in key onTableId2index; :"you already joined";];
+  if[((count onTableId2index)>=count rols_this_game); :"you are too late! All ",(string count rols_this_game)," seats are occupied";];
+  onTableId2index[get `last_id]:count onTableId2index;
+  :(string get `last_name)," you have joined successfully ! ", (string count onTableId2index)," people joined now";
+  };
+
+people_on_table:{ :string id2names key onTableId2index; };
 who:{
-  role:rols_this_game[onTableId2index[last_id]];
+  role:rols_this_game[onTableId2index[get `last_id]];
   idsYouKnow:raze role2id[rolesDisSkill[role;`skill]];
-  show res:(string last_name),", you are ",(string role),": ",rolesDisSkill[role;`discription],raze " ",/:$[rolesDisSkill[role;`good]; string asc id2names[idsYouKnow]; (string id2names[idsYouKnow]),'":",/:(string rols_this_game[onTableId2index[idsYouKnow]])];
+  show res:(string get `last_name),", you are ",(string role),": ",rolesDisSkill[role;`discription],raze " ",/:$[rolesDisSkill[role;`good]; string asc id2names[idsYouKnow]; (string id2names[idsYouKnow]),'":",/:(string rols_this_game[onTableId2index[idsYouKnow]])];
   :res};
 
 vote:{
-  if[last_id in voted_this_round;
-    :(string last_name),", you already voted once this round, please don't vote twice !";
+  if[(get `last_id) in voted_this_round;
+    :(string get `last_name),", you already voted once this round, please don't vote twice !";
     ];
-  `voted_this_round set voted_this_round,last_id;
+  `voted_this_round set voted_this_round,get `last_id;
+
+
+
+
   `votesNb set votesNb+1;
   s_f_nb:(`success`fail!`succN`failN)[x];
   records[which_round;s_f_nb]:records[which_round;s_f_nb]+1;
@@ -71,19 +78,19 @@ vote:{
     `votesNb set 0;
     `voted_this_round set ();
     ];
-  :(string last_name),", your vote is well registred !";
+  :(string get `last_name),", your vote is well registred !";
   }
 
 assassinate:{
-  if[not last_id in role2id[`Assassin];
-    :(string last_name),", you are not Assassin, you assassinate what ??? Let me recall you something:\n",who`;
+  if[not (get `last_id) in role2id[`Assassin];
+    :(string get `last_name),", you are not Assassin, you assassinate what ??? Let me recall you something:\n",who`;
     ];
   name:`$x;
   id4name:id2names?name;
   if[null id4name; :x," is not on the table, please verify the name";];
   $[id4name in role2id[`Merlin];
-    :"Well done ! ",(string last_name)," you assassinated the right person ! Evil won !";
-    :"Oh! ",(string last_name)," you assassinated the wrong person !"
+    :"Well done ! ",(string get `last_name)," you assassinated the right person ! Evil won !";
+    :"Oh! ",(string get `last_name)," you assassinated the wrong person !"
     ];
   }
 

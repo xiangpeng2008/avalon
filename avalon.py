@@ -52,7 +52,7 @@ app.layout = html.Div( [
                 {'label': 'vote fail', 'value': 'vote[`fail]'},#投失败票
                 {'label': 'show game progress', 'value': 'records'},#游戏进度
                 {'label': 'assassinate *', 'value': 'assassinate'},#行刺
-                {'label': 'show people on this table', 'value': 'string value id2names'},#玩家们
+                {'label': 'show people on this table', 'value': 'people_on_table`'},#玩家们
                 {'label': 'newgame', 'value': 'newgame`'},#开局
                 {'label': 'show my profile', 'value': 'who`'},#我的身份
                 {'label': 'join', 'value': 'join`'},#加入
