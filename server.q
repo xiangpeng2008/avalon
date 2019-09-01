@@ -12,24 +12,31 @@ voted_this_round:();
 votesNb:0;
 which_round:1;
 records:();
+gameOn:0b;
+failRdNbs:0;
 
 set_nb_people:{[nb] 
   nb:"J"$nb;
   $[nb in (0!playersSettings)[`nb]; 
     [`rols_this_game set playersSettings[nb][`players];
       `tasks set flip `tasks`barrer # playersSettings[nb];
-      refresh_players`;
+      `onTableId2index set ()!();
       :"we are a ",(string nb)," people game, the rols are",(raze " ",/:string rols_this_game),".\nPlease ask others to join, and start a new game after everyone join";];
     :"please enter of number between ",(string min (0!playersSettings)[`nb])," and ",(string max (0!playersSettings)[`nb])];
   };
 
-refresh_players:{`onTableId2index set ()!();:"Done, please ask people to re-join";};
+progress:{
+  $[votesNb=0;:records;:(string last_id),", only ",(string votesNb)," of ",(string records[which_round;`tasks])," people voted this round, please wait them to finish! "]; };
 
 newgame:{ 
+  if[gameOn;
+    :"game is not finished, please don't start a new one now !";];
   `rols_this_game set (neg count rols_this_game)?asc rols_this_game;
   `role2id set group (key onTableId2index)!rols_this_game;
   `which_round set 1;
   `votesNb set 0;
+  `gameOn set 1b;
+  `failRdNbs set 0;
   `records set tasks,'records_init;
   `voted_this_round set ();
   :"game restarted, please ask people to see their profiles";
@@ -49,6 +56,7 @@ join:{
   };
 
 people_on_table:{ :string key onTableId2index; };
+
 who:{
   role:rols_this_game[onTableId2index[last_id]];
   idsYouKnow:raze role2id[rolesDisSkill[role;`skill]];
@@ -63,15 +71,20 @@ vote:{
   s_f_nb:(`success`fail!`succN`failN)[x];
   records[which_round;s_f_nb]:records[which_round;s_f_nb]+1;
   if[votesNb>=records[which_round;`tasks];
-    records[which_round;`stat]:`$$[records[which_round;`failN]>=records[which_round;`barrer];"✗";"✓"];
+    records[which_round;`stat]:`$$[records[which_round;`failN]>=records[which_round;`barrer];[`failRdNbs set failRdNbs+1;"✗"];"✓"];
     `which_round set which_round+1;
     `votesNb set 0;
     `voted_this_round set ();
+    if[failRdNbs=3;
+      `gameOn set 0b;
+      :"Well done ! ",(string last_id)," Evil won !";];
     ];
   :(string last_id),", your vote is well registred !";
   }
 
 assassinate:{
+  if[not gameOn; :(string last_id),", game is already over !";];
+  `gameOn set 0b;
   if[not last_id in role2id[`Assassin];
     :(string last_id),", you are not Assassin, you assassinate what ??? Let me recall you something:\n",who`;
     ];
@@ -80,7 +93,7 @@ assassinate:{
   if[null id4name; :x," is not on the table, please verify the name";];
   $[id4name in role2id[`Merlin];
     :"Well done ! ",(string last_id)," you assassinated the right person ! Evil won !";
-    :"Oh! ",(string last_id)," you assassinated the wrong person !"
+    :"Oh! ",(string last_id)," you assassinated the wrong person ! Good people won !"
     ];
   }
 

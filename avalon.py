@@ -37,15 +37,13 @@ avalon_form = html.Div( [
             options=[
                 {'label': 'vote success', 'value': 'vote[`success]'},#投成功票
                 {'label': 'vote fail', 'value': 'vote[`fail]'},#投失败票
-                {'label': 'show game progress', 'value': 'records'},#游戏进度
+                {'label': 'show game progress', 'value': 'progress`'},#游戏进度
                 {'label': 'assassinate *', 'value': 'assassinate'},#行刺
                 {'label': 'show people on this table', 'value': 'people_on_table`'},#玩家们
                 {'label': 'newgame', 'value': 'newgame`'},#开局
                 {'label': 'show my profile', 'value': 'who`'},#我的身份
                 {'label': 'join', 'value': 'join`'},#加入
-                {'label': 'I\'m *', 'value': 'im'},#我是
                 {'label': 'set number of people *', 'value': 'set_nb_people'},#设定游戏人数 
-                {'label': '!!!reset players', 'value': 'refresh_players`'},
                 ],
             value='',
             style={'fontSize': fontSize},
@@ -120,7 +118,6 @@ def update_output_div(click, input_opt, input_cmd, existe_value):
         # return json.dumps(['not logged in, please go to click [ivoryhuo.com/login](http://ivoryhuo.com/login) to login']),'',''
         return ['not logged in, please go to click [127.0.0.1:8050/login](http://127.0.0.1:8050/login) to login'],'',''
     print(session_cookie)
-    print(type(session_cookie))
     if not input_opt:
         return existe_value,'',''
     command='python["'+session_cookie+'";"'+input_opt+('[\\"'+input_cmd.replace(" ", "")+'\\"]' if input_cmd else '')+'"]'
