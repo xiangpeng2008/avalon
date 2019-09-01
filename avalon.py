@@ -1,7 +1,10 @@
-import os
-from flask import Flask, redirect, url_for,request
-from flask_dance.contrib.google import make_google_blueprint, google
-from dash import Dash
+import dash
+import dash_core_components as dcc
+import dash_html_components as html
+from dash.dependencies import Input, Output, State
+import json
+import flask
+
 from qpython import qconnection
 import pandas as pd
 import numpy as np
@@ -9,41 +12,25 @@ import numpy as np
 q = qconnection.QConnection(host = 'localhost', port = 7778, pandas = True)
 q.open()
 
-server = Flask(__name__)
-server.secret_key = os.environ.get("FLASK_SECRET_KEY", "supersekrit")
-server.config["GOOGLE_OAUTH_CLIENT_ID"] = os.environ.get("GOOGLE_OAUTH_CLIENT_ID")
-server.config["GOOGLE_OAUTH_CLIENT_SECRET"] = os.environ.get("GOOGLE_OAUTH_CLIENT_SECRET")
-google_bp = make_google_blueprint(scope=["profile", "email"])
-server.register_blueprint(google_bp, url_prefix="/login")
-
-@server.route("/")
-def index():
-    if not google.authorized:
-        return redirect(url_for("google.login"))
-    try:
-        resp = google.get("/oauth2/v1/userinfo")
-        assert resp.ok, resp.text
-    except:
-        return redirect(url_for("google.login"))
-    return redirect('http://ivoryhuo.com/avalon/')
-    # return redirect('localhost:7777/avalon/')
-
-import json
-import dash_core_components as dcc
-import dash_html_components as html
-from dash.dependencies import Input, Output, State
-
-
+app = dash.Dash(
+    __name__,
+    external_stylesheets=['https://codepen.io/chriddyp/pen/bWLwgP.css']
+)
 fontSize=20
+login_form = html.Div([
+    html.Form([
+        dcc.Input(placeholder='username', name='username', type='text'),
+        dcc.Input(placeholder='password', name='password', type='password'),
+        html.Button('Login', type='submit')
+    ], action='/login', method='post')
+])
 
-app = Dash(
-        __name__, 
-        server=server,
-        routes_pathname_prefix='/avalon/',
-        meta_tags=[ {"name": "viewport", "content": "width=device-width, initial-scale=1"} ],
-        )
+url_bar_and_content_div = html.Div([
+    dcc.Location(id='url', refresh=False),
+    html.Div(id='page-content')
+])
 
-app.layout = html.Div( [
+avalon_form = html.Div( [
     html.Div([
         dcc.Dropdown(
             id='input_option',
@@ -70,6 +57,55 @@ app.layout = html.Div( [
     html.Div(id='history'),
     ])
 
+@app.server.route('/login', methods=['POST'])
+def route_login():
+    data = flask.request.form
+    username = data.get('username')
+    password = data.get('password')
+
+    if not username or not password=="pass123":
+        flask.abort(401)
+
+    # actual implementation should verify the password.
+    # Recommended to only keep a hash in database and use something like
+    # bcrypt to encrypt the password and check the hashed results.
+
+    # Return a redirect with
+    rep = flask.redirect('/avalon')
+
+    # Here we just store the given username in a cookie.
+    # Actual session cookies should be signed or use a JWT token.
+    rep.set_cookie('custom_auth_session', username)
+    return rep
+
+
+# create a logout route
+@app.server.route('/logout', methods=['POST'])
+def route_logout():
+    # Redirect back to the index and remove the session cookie.
+    rep = flask.redirect(_app_route)
+    rep.set_cookie('custom_auth_session', '', expires=0)
+    return rep
+
+def serve_layout():
+    if flask.has_request_context():
+        return url_bar_and_content_div
+    return html.Div([
+        url_bar_and_content_div,
+        avalon_form,
+    ])
+
+app.layout = serve_layout
+
+# Index callbacks
+@app.callback(Output('page-content', 'children'),
+              [Input('url', 'pathname')])
+def display_page(pathname):
+    if pathname == "/avalon":
+        return avalon_form
+    elif pathname == "/login":
+        return login_form
+
 @app.callback(
         [ Output('cache_history', 'children'), Output('input_option', 'value'),Output('input_cmd', 'value'), ], 
         [Input('submit_button','n_clicks')],
@@ -79,20 +115,18 @@ app.layout = html.Div( [
             State('cache_history', 'children')]
         )
 def update_output_div(click, input_opt, input_cmd, existe_value):
-    if not google.authorized:
-        return json.dumps(['not logged in, please go to click [ivoryhuo.com](http://ivoryhuo.com) to login']),'',''
-    try:
-        resp = google.get("/oauth2/v1/userinfo")
-        assert resp.ok, resp.text
-    except:
-        return json.dumps(['google session expired, please click [ivoryhuo.com](http://ivoryhuo.com) to relogin']),'',''
+    session_cookie = flask.request.cookies.get('custom_auth_session')
+    if not session_cookie:
+        # return json.dumps(['not logged in, please go to click [ivoryhuo.com/login](http://ivoryhuo.com/login) to login']),'',''
+        return ['not logged in, please go to click [127.0.0.1:8050/login](http://127.0.0.1:8050/login) to login'],'',''
+    print(session_cookie)
+    print(type(session_cookie))
     if not input_opt:
         return existe_value,'',''
-    qres=''
-    command='python["'+resp.json()['id']+'";"'+input_opt+('[\\"'+input_cmd.replace(" ", "")+'\\"]' if input_cmd else '')+'"]'
+    command='python["'+session_cookie+'";"'+input_opt+('[\\"'+input_cmd.replace(" ", "")+'\\"]' if input_cmd else '')+'"]'
     print('command: '+command)
     qres=q.sendSync(command)
-    print("qres is")
+    print("qres is ")
     print(qres)
     if isinstance(qres, pd.core.frame.DataFrame):
         str_df = qres.select_dtypes([np.object])
@@ -104,10 +138,8 @@ def update_output_div(click, input_opt, input_cmd, existe_value):
         qres='\n'.join([i.decode('UTF-8') for i in qres])
     else:
         qres=qres.decode('UTF-8')
-    
     res=json.loads(existe_value)
     return [json.dumps((["*"+input_opt+" "+input_cmd+"*","```bash\n"+qres+"\n```"]+res)),'','']
-
 
 @app.callback(
         Output('history', 'children'), 
@@ -117,3 +149,6 @@ def update_output_div(existe_value):
     res = '\n'.join(json.loads(existe_value))
     print(res)
     return dcc.Markdown(res)
+
+if __name__ == '__main__':
+    app.run_server(debug=True, port=7777, host='0.0.0.0')
