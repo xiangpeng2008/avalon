@@ -63,6 +63,7 @@ who:{
   :(string last_id),", you are ",(string role),": ",rolesDisSkill[role;`discription],raze " ",/:$[rolesDisSkill[role;`good]; string asc idsYouKnow; (string idsYouKnow),'":",/:(string rols_this_game[onTableId2index[idsYouKnow]])]; };
 
 vote:{
+  if[not gameOn;:(string last_id),", you can vote anymore, game is already over!"];
   if[last_id in voted_this_round;
     :(string last_id),", you already voted once this round, please don't vote twice !";
     ];

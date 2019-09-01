@@ -1,2 +1,2 @@
 source ~/venv37/bin/activate
-python avalon.py 
+gunicorn --bind 0.0.0.0:7777 avalon:server
