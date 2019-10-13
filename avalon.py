@@ -8,6 +8,7 @@ import flask
 from qpython import qconnection
 import pandas as pd
 import numpy as np
+import re
 
 q = qconnection.QConnection(host = 'localhost', port = 7778, pandas = True)
 q.open()
@@ -59,7 +60,7 @@ avalon_form = html.Div( [
 @app.server.route('/login', methods=['POST'])
 def route_login():
     data = flask.request.form
-    username = data.get('username')
+    username = re.sub(' ', '', data.get('username'))
     password = data.get('password')
 
     if not username or not password=="pass123":
