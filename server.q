@@ -17,6 +17,7 @@ failRdNbs:0;
 
 set_nb_people:{[nb] 
   nb:"J"$nb;
+  `gameOn set 0b;
   $[nb in (0!playersSettings)[`nb]; 
     [`rols_this_game set playersSettings[nb][`players];
       `tasks set flip `tasks`barrer # playersSettings[nb];
