@@ -5,6 +5,7 @@
 #include <math.h>
 #include <algorithm> 
 #include <fstream>
+#include <random> 
 
 using namespace std;
 typedef int64_t ll;
@@ -17,361 +18,237 @@ typedef int64_t ll;
 
 const double EulerConstant = exp(1.0);
 
-template <typename T> int64_t sgn(T val) {
-  return (T(0) < val) - (val < T(0));
-}
-
-template <typename T> 
-T gcd(T a, T b) {
-  return b == 0 ? a : gcd(b, a % b);
-}
-
-int64_t count_2m_it = 0;
-ll mod=1e8;
-ll limitN = 120000;
-//ll limitN = 1000;
-vector<ll> primes;
-vector<ll> rads(limitN+1,1);
-bool abcHit(ll a, ll b, ll c){
-  if(rads[a]*rads[b]*rads[c]>=c){
-    return false;
-  }
-  if(gcd(rads[a],rads[b])!=1){
-    return false;
-  }
-  //cout<<a<<":"<<rads[a]<<' '<<b<<":"<<rads[b]<<' '<<c<<":"<<rads[c]<<endl;
-  //cout<<a<<' '<<b<<' '<<c<<endl;
-  return true;
-}
-typedef vector<vector<int>> ct;
-class Avalon{
-  public:
-    Avalon(ct const & sudo):sudo(sudo){
-      cout<<"sudo initial"<<endl;
-      init();
-      while(progressed){
-	solve();
-      }
-      //print();
-    };
-    ct sudo;
-    void debugPrint(){
-      int n = 0;
-      for(auto const & it:unsolvedPos){
-	++n;
-	cout<<it.first<<it.second<<' ';
-	for(auto it:possibles_values[it]){
-	  cout<<it;
-	}
-	cout<<endl;
-	if(n>5){
-	  //break;
-	}
-      }
-    }
-  private:
-    bool progressed = true;
-
-    vector<ct> guessNodesSudo;
-    vector<pair<pair<int,int>,int>> guessNodesVal;
-
-    map<pair<int,int>,set<int>> possibles_values;
-    vector<pair<int,int>> unsolvedPos;
-
-
-    void update(int i,int j,int k){
-      sudo[i][j] = k;
-      reducePossibles_values(i,j,k);
-      //cout<<"update "<<i<<j<<' '<<k<<endl;
-      //print();
-      progressed = true;
-    }
-    void subSolveInverse(vector<pair<int,int>>& vp){
-      for(auto it=vp.begin();it!=vp.end();){
-	if(sudo[it->first][it->second]!=0){ it = vp.erase(it); 
-	} else{ ++it; }
-      }
-      map<int,int> mii;
-      for(const auto& it:vp){
-	for(const auto & it_sub: possibles_values[it]){
-	  ++mii[it_sub];
-	}
-      }
-      for(const auto& it:mii){
-	if(it.second==1){
-	  for(const auto& itVp:vp){
-	    auto container = possibles_values[itVp];
-	    if(container.find(it.first) != container.end()){
-	      //print();
-	      update(itVp.first,itVp.second,it.first);
-	      unsolvedPos.erase(std::remove(unsolvedPos.begin(), unsolvedPos.end(), itVp), unsolvedPos.end());
-	      //cout<<"subSolveInverse "<<itVp.first<<' '<<itVp.second<<' '<<it.first<<endl;
-	      break;
-	    }
-	  }
-	}
-      }
-    }
-
-    void solve_inverse(){
-      loop(9){
-	vector<pair<int,int>> vp;
-	for(int j=0;j<9;++j){ 
-	  vp.push_back(make_pair(i,j));
-	}
-	subSolveInverse(vp);
-
-	vp.clear();
-	for(int j=0;j<9;++j){ 
-	  vp.push_back(make_pair(j,i));
-	}
-	subSolveInverse(vp);
-
-	vp.clear();
-	for(int j=0;j<9;++j){ 
-	  vp.push_back(make_pair(i/3*3+j/3,i%3*3+j%3));
-	}
-	subSolveInverse(vp);
-      }
-    }
-
-    void solve_forward(){
-      for(auto it=unsolvedPos.begin();it!=unsolvedPos.end();){
-	auto set_vs = possibles_values[*it];
-	if(set_vs.size()==0){
-	  revertToPrevNode();
-	  return;
-	} else if (set_vs.size()==1){
-	  update(it->first,it->second,*(set_vs.begin()));
-	  it = unsolvedPos.erase(it);
-	} else {
-	  ++it;
-	}
-      }
-    }
-    void revertToPrevNode(){
-      //debugPrint();
-      cout<<"guess again\n";
-      if(guessNodesSudo.empty()){
-	cout<<"abort\n";
-	abort();
-      }
-      //cout<<"print before guess again\n";
-      //print();
-      sudo = guessNodesSudo.back();
-      //cout<<"print when guess again\n";
-      //print();
-      init();
-      auto & lastGuess = guessNodesVal.back();
-      if(possibles_values[lastGuess.first].size()>lastGuess.second+1){
-	++lastGuess.second;
-	update(
-	    lastGuess.first.first,
-	    lastGuess.first.second,
-	    *next(possibles_values[lastGuess.first].begin(),lastGuess.second)
-	    );
-	unsolvedPos.erase(std::remove(unsolvedPos.begin(), unsolvedPos.end(), lastGuess.first), unsolvedPos.end());
-      } else {
-	guessNodesSudo.pop_back();
-	guessNodesVal.pop_back();
-	cout<<"guess backward\n";
-	revertToPrevNode();
-      }
-    }
-    void solve(){
-      progressed = false;
-      solve_forward();
-      solve_inverse();
-
-      if(not progressed){
-	if(not unsolvedPos.empty()){
-	  //debugPrint();
-	  cout<<"guess forward\n";
-	  guessNodesSudo.push_back(sudo);
-	  auto guessPair = *(unsolvedPos.begin());
-	  auto guessVal = *(possibles_values[guessPair].begin());
-	  guessNodesVal.push_back(make_pair(guessPair,0));
-	  update(guessPair.first,guessPair.second,guessVal);
-	  unsolvedPos.erase(std::remove(unsolvedPos.begin(), unsolvedPos.end(), guessPair), unsolvedPos.end());
-	  //print();
-	}
-      }
-      //debugPrint();
-    }
-    void reducePossibles_values(){
-      for(auto const & it:unsolvedPos){
-	auto & set_vs = possibles_values[it];
-	auto startI = it.first/3*3;
-	auto startJ = it.second/3*3;
-	loop(9){
-	  set_vs.erase(sudo[it.first][i]);
-	  set_vs.erase(sudo[i][it.second]);
-	  set_vs.erase(sudo[startI+i%3][startJ+i/3]);
-	}
-      }
-    }
-    void reduce1value(const pair<int,int> & p, int v){
-      possibles_values[p].erase(v);
-    };
-    void reducePossibles_values(int i, int j, int v){
-      auto startI = i/3*3;
-      auto startJ = j/3*3;
-      for(int k=0;k<9;++k){
-	reduce1value(make_pair(i,k),v);
-	reduce1value(make_pair(k,j),v);
-	reduce1value(make_pair(startI+k%3,startJ+k/3),v);
-      }
-    }
-    void init(){
-      unsolvedPos.clear();
-      for(int i=0;i<9;++i){
-	for(int j=0;j<9;++j){
-	  if(sudo[i][j]==0){
-	    auto p = make_pair(i,j);
-	    possibles_values[p]={1,2,3,4,5,6,7,8,9};
-	    unsolvedPos.push_back(p);
-	  }
-	}
-      }
-      reducePossibles_values();
-    }
-    void print(){
-      cout<<"print\n";
-      for(int i=0;i<9;++i){
-	for(int j=0;j<9;++j){
-	  auto v = char(48+sudo[i][j]);
-	  cout<<('0'==v?'*':v);
-	}
-	cout<<endl;
-      }
-    }
-};
-
 int main(){
-  std::ifstream sudoFile("/Users/xiangpeng/Documents/cpp/euler_project/files/p096_sudoku.txt");
   string str;
-  //loop(11){ sudoFile >> str;}
-  //loop(55){ sudoFile >> str;}
   int res = 0;
-  loop(50){
-    sudoFile >> str;
-    sudoFile >> str;
-    ct datas;
-    loop(9){
-      sudoFile >> str;
-      std::vector<int> data(str.begin(), str.end());
-      for(auto & it:data){
-	it-=48;
-      }
-      datas.push_back(data);
-    }
-    Avalon S(datas);
-    //S.debugPrint();
-    res +=100*S.sudo[0][0]+10*S.sudo[0][1]+S.sudo[0][2];
+  std::vector<int> data(str.begin(), str.end());
+  for(auto & it:data){
+    it-=48;
+    res +=100*S.avalon[0][0]+10*S.avalon[0][1]+S.avalon[0][2];
   }
   cout<<res<<endl;
   return 0;
 }
 
+class Role:{
+  public:
+    Role(const string & name,bool good,const string & discription):name(name), good(good),discription(discription){}
+    void setSkills(vector<Role> roles){skill(roles);}
+    const string & name;
+    const string & discription;
+    const bool good;
+    vector<Role> skill;
+}
 
+std::ostream &operator<<(std::ostream &os, Role const &role) { 
+  return os << role.name;
+}
 
-playersSettings:([nb:(5+til 6)]players:(`Merlin`Percival`Servant`Morgana`Assassin; `Merlin`Percival`Servant`Servant`Morgana`Assassin; `Merlin`Percival`Servant`Servant`Morgana`Assassin`Oberon; `Merlin`Percival`Servant`Servant`Servant`Morgana`Assassin`Minion; `Merlin`Percival`Servant`Servant`Servant`Servant`Mordred`Assassin`Morgana; `Merlin`Percival`Servant`Servant`Servant`Servant`Mordred`Assassin`Morgana`Oberon); tasks:(((2 3 2 3 3); (2 3 4 3 4); (2 3 3 4 4)),3#enlist (3 4 4 5 5)); barrer:((2#enlist 5#1),4#enlist 1 1 1 2 1));
-rolesDisSkill:([role:`Merlin`Percival`Servant`Assassin`Morgana`Oberon`Mordred`Minion]discription:("Knows evil, must remain hidden, you see"; "you see"; "Loyal Servant of Arthur"; "Minion of Mordred, you know"; "you know"; "Unkonwn to Evil"; "Unknow to Merlin, you know"; "Minion of Mordred, you know");good:11100000b;skill:(`Assassin`Morgana`Oberon`Minion;`Merlin`Morgana; ();`Morgana`Mordred`Minion;`Assassin`Mordred`Minion;();`Assassin`Morgana`Minion;`Assassin`Morgana`Mordred));
+Role Merlin  ("Merlin",   true,  "Knows evil, must remain hidden, you see");
+Role Percival("Percival", true,  "you see"                                );
+Role Servant ("Servant",  true,  "Loyal Servant of Arthur"                );
+Role Assassin("Assassin", false, "Minion of Mordred, you know"            );
+Role Morgana ("Morgana",  false, "you know"                               );
+Role Oberon  ("Oberon",   false, "Unkonwn to Evil"                        );
+Role Mordred ("Mordred",  false, "Unknow to Merlin, you know"             );
+Role Minion  ("Minion",   false, "Minion of Mordred, you know"            );
 
-last_id:();
-onTableId2index:()!();
-role2id:()!();
-tasks:();
-rols_this_game:();
-records_init:([round:1+til 5]succN:5#0;failN:5#0;stat:5#`);
+Merlin  .setSkills({Assassin,Morgana,Oberon,Minion});
+Percival.setSkills({Merlin,Morgana});
+Servant .setSkills({});
+Assassin.setSkills({Morgana,Mordred,Minion});
+Morgana .setSkills({Assassin,Mordred,Minion});
+Oberon  .setSkills({});
+Mordred .setSkills({Assassin,Morgana,Minion});
+Minion  .setSkills({Assassin,Morgana,Mordred});
 
-voted_this_round:();
-votesNb:0;
-which_round:1;
-records:();
-gameOn:0b;
-failRdNbs:0;
+class Setting:{
+  public:
+    Setting(const int nb,const vector<Role> & roles, const vector<int> & tasks,const vector<int> & barrer):nb(nb),roles(roles),tasks(tasks),barrer(barrer){}
+    const int nb;
+    const vector<Role> & roles;
+    const vector<int> & tasks;
+    const vector<int> & barrer;
+}
 
-set_nb_people:{[nb] 
-  nb:"J"$nb;
-  $[nb in (0!playersSettings)[`nb]; 
-    [`rols_this_game set playersSettings[nb][`players];
-      `tasks set flip `tasks`barrer # playersSettings[nb];
-      `onTableId2index set ()!();
-      :"we are a ",(string nb)," people game, the rols are",(raze " ",/:string rols_this_game),".\nPlease ask others to join, and start a new game after everyone join";];
-    :"please enter of number between ",(string min (0!playersSettings)[`nb])," and ",(string max (0!playersSettings)[`nb])];
-  };
-
-progress:{
-  $[votesNb=0;:records;:(string last_id),", only ",(string votesNb)," of ",(string records[which_round;`tasks])," people voted this round, please wait them to finish! "]; };
-
-newgame:{ 
-  if[gameOn;
-    :"game is not finished, please don't start a new one now !";];
-  `rols_this_game set (neg count rols_this_game)?asc rols_this_game;
-  `role2id set group (key onTableId2index)!rols_this_game;
-  `which_round set 1;
-  `votesNb set 0;
-  `gameOn set 1b;
-  `failRdNbs set 0;
-  `records set tasks,'records_init;
-  `voted_this_round set ();
-  :"game restarted, please ask people to see their profiles";
-  };
-
-python:{[id;command] 
-  `last_id set `$id; 
-  show res:get lower command;
-  :res;
-  };
-
-join:{
-  if[last_id in key onTableId2index; :"you already joined";];
-  if[((count onTableId2index)>=count rols_this_game); :"you are too late! All ",(string count rols_this_game)," seats are occupied";];
-  onTableId2index[last_id]:count onTableId2index;
-  :(string last_id)," you have joined successfully ! ", (string count onTableId2index)," people joined now";
-  };
-
-people_on_table:{ :string key onTableId2index; };
-
-who:{
-  role:rols_this_game[onTableId2index[last_id]];
-  idsYouKnow:raze role2id[rolesDisSkill[role;`skill]];
-  :(string last_id),", you are ",(string role),": ",rolesDisSkill[role;`discription],raze " ",/:$[rolesDisSkill[role;`good]; string asc idsYouKnow; (string idsYouKnow),'":",/:(string rols_this_game[onTableId2index[idsYouKnow]])]; };
-
-vote:{
-  if[not gameOn;:(string last_id),", you can vote anymore, game is already over!"];
-  if[last_id in voted_this_round;
-    :(string last_id),", you already voted once this round, please don't vote twice !";
-    ];
-  `voted_this_round set voted_this_round,last_id;
-  `votesNb set votesNb+1;
-  s_f_nb:(`success`fail!`succN`failN)[x];
-  records[which_round;s_f_nb]:records[which_round;s_f_nb]+1;
-  if[votesNb>=records[which_round;`tasks];
-    records[which_round;`stat]:`$$[records[which_round;`failN]>=records[which_round;`barrer];[`failRdNbs set failRdNbs+1;"✗"];"✓"];
-    `which_round set which_round+1;
-    `votesNb set 0;
-    `voted_this_round set ();
-    if[failRdNbs=3;
-      `gameOn set 0b;
-      :"Well done ! ",(string last_id)," Evil won !";];
-    ];
-  :(string last_id),", your vote is well registred !";
+std::ostream &operator<<(std::ostream &os, Setting const &setting) { 
+  for(auto const & it:setting.roles){
+    os << it <<", ";
   }
+  return os;
+}
 
-assassinate:{
-  if[not gameOn; :(string last_id),", game is already over !";];
-  `gameOn set 0b;
-  if[not last_id in role2id[`Assassin];
-    :(string last_id),", you are not Assassin, you assassinate what ??? Let me recall you something:\n",who`;
-    ];
-  name:`$x;
-  id4name:id2names?name;
-  if[null id4name; :x," is not on the table, please verify the name";];
-  $[id4name in role2id[`Merlin];
-    :"Well done ! ",(string last_id)," you assassinated the right person ! Evil won !";
-    :"Oh! ",(string last_id)," you assassinated the wrong person ! Good people won !"
-    ];
-  }
+Setting setting5 (5,  { Merlin,Percival,Servant,Morgana,Assassin                                        },{2,3,2,3,3},{1,1,1,1,1});
+Setting setting6 (6,  { Merlin,Percival,Servant,Servant,Morgana,Assassin                                },{2,3,4,3,4},{1,1,1,1,1});
+Setting setting7 (7,  { Merlin,Percival,Servant,Servant,Morgana,Assassin,Oberon                         },{2,3,3,4,4},{1,1,1,2,1});
+Setting setting8 (8,  { Merlin,Percival,Servant,Servant,Servant,Morgana,Assassin,Minion                 },{3,4,4,5,5},{1,1,1,2,1});
+Setting setting9 (9,  { Merlin,Percival,Servant,Servant,Servant,Servant,Morgana,Mordred,Assassin        },{3,4,4,5,5},{1,1,1,2,1});
+Setting setting10(10, { Merlin,Percival,Servant,Servant,Servant,Servant,Morgana,Mordred,Assassin,Oberon },{3,4,4,5,5},{1,1,1,2,1});
+
+map<int,Setting> settings = {
+  {5,  setting5 },
+  {6,  setting6 },
+  {7,  setting7 },
+  {8,  setting8 },
+  {9,  setting9 },
+  {10, setting10}};
+
+class Avalon{
+  public:
+    Avalon(){ };
+    void setNbPeople(int nb){
+      if((nb > 10) or (nb < 5)){
+	count<<"please enter of number between 5 and 10\n";
+      } else {
+	nbPeople = nb;
+	setting = settings[nb];
+	rolsThisGame(setting.roles);
+	onTableId2index.clear();
+	count<<"we are a "<<nb<<" people game, the rols are: "<<setting<<"\nPlease ask others to join, and start a new game after everyone join\n";
+      }
+    }
+    void join(string usrname){
+      if ( onTableId2index.find(usrname) != onTableId2index.end() ) {
+	cout<<"you already joined\n";
+      } else if (onTableId2index.size() > setting.nb){
+	cout<<"you are too late! All " << setting.nb <<" seats are occupied\n";
+      } else {
+	onTableId2index[usrname] = onTableId2index.size();
+	cout<<usrname<<" you have joined successfully ! ", onTableId2index.size()<<" people joined now";
+      }
+    }
+
+    void newgame(){
+      if(onTableId2index.size()<setting.nb){
+	cout<<"you need "<<setting.nb<<" people to start the game, while there are only "<<onTableId2index.size()<<" now"`\n";
+	return;
+      }
+      if(gameOn){
+	cout<<"game is not finished, please don't start a new one now !\n";
+	return;
+      }else{
+	unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+	shuffle (rolsThisGame.begin(), rolsThisGame.end(), std::default_random_engine(seed));
+
+	role2id.clear();
+	int idx=0;
+	for (auto const& it : onTableId2index) {
+	  role2id[rolsThisGame[idx]].push_back(it.first);
+	  ++idx;
+	}
+	whichRound = 0;
+	votesNb = 0;
+	gameOn = true;
+	std::fill(succN.begin(), succN.end(), 0);
+	std::fill(failN.begin(), failN.end(), 0);
+	std::fill(stats.begin(), stats.end(), ' ');
+	failRdNbs = 0;
+	votedThisRound.clear();
+	cout<<"game restarted, please ask people to see their profiles\n";
+      }
+    }
+    void people_on_table(){ 
+      for (auto const& it : onTableId2index) {
+	cout<<it.first<<", ";
+      }
+      cout<<'\n';
+    }
+    void who(string usrname){
+      auto role = rolsThisGame[onTableId2index[usrname]];
+      vecotr<string> idsYouKnow;
+      for(auto const & it: role.skill){
+	idsYouKnow.insert(idsYouKnow.end(), role2id[id].begin(), role2id[id].end());
+      }
+      sort (idsYouKnow.begin(), idsYouKnow.end());
+      cout<<usrname<<", you are "<<role<<": "<<role.discription;
+
+      if(role.good){
+	for(auto const & it:idsYouKnow){
+	  cout<<" "<<it;
+	}
+      } else {
+	for(auto const & it:idsYouKnow){
+	  cout<<" "<<it<<":"<<rolsThisGame[onTableId2index[idsYouKnow]];
+	}
+      }
+    }
+
+    void progress(){ 
+      if(votesNb==0){
+	cout<<"task barrer succN failN stat\n";
+	loop(5){
+	  cout<<i+1<<' '<<setting.tasks[i]<<' '<<setting.barrer[i]<<' '<<succN[i]<<' '<<failN[i]<<' '<<stats[i]<<'\n';
+	}
+      }else{
+	cout<<usrname<<", only "<<votesNb<<" of "<<setting.tasks[whichRound]<<" people voted this round, please wait them to finish! ";
+      }
+    }
+
+    void vote(bool votePass){
+      if(not gameOn){
+	cout<<usrname<<", you can vote anymore, game is already over\n";
+	return;
+      }
+      if(std::find(votedThisRound.begin(), votedThisRound.end(),usrname)!=votedThisRound.end()){
+	cout<<usrname<<", you already voted once this round, please don't vote twice !\n";
+	return;
+      }
+      votedThisRound.push_back(usrname);
+      ++votesNb;
+      (votePass?succN:failN)[whichRound]++;
+      if(votesNb>=setting.tasks[whichRound]){
+	bool failed = failN[whichRound]>=setting.barrer[whichRound];
+	failRdNbs=failRdNbs+failed;
+	stats[whichRound]=failed?'✗':'✓';
+	whichRound++;
+	votesNb=0;
+	votedThisRound.clear();
+	if(failRdNbs=3){
+	  gameOn=false;
+	  cout<<"Well done ! "<<usrname<<" Evil won !\n";
+	  return;
+	}
+      }
+      cout<<usrname<<", your vote is well registred !\n";
+    }
+
+    void assassinate(string usrname,string name){
+      if(not gameOn){
+	cout<<usrname<<", game is already over !\n";
+	return;
+      }
+      auto const & idAssassin = role2id[Assassin];
+      if(std::find(idAssassin.begin(), idAssassin.end(),usrname)==idAssassin.end()){
+	cout<<usrname<<", you are not Assassin, you assassinate what ??? Let me recall you something:\n"<<who(usrname);
+      }
+      gameOn =false;
+      if ( onTableId2index.find(name) == onTableId2index.end() ) {
+	cout<<name<<" is not on the table, please verify the name\n";
+	return;
+      } else {
+	auto const & idMerlin = role2id[`Merlin];
+	if(std::find(idMerlin.begin(), idMerlin.end(),name)==idMerlin.end()){
+	  cout<<"Oh! "<<usrname<<" you assassinated the wrong person ! Good people won !\n";
+	}else{
+	  cout<<"Well done ! "<<usrname<<" you assassinated the right person ! Evil won !\n";
+	}
+      }
+      return;
+    }
+
+  private:
+    int nbPeople;
+    Setting setting;
+    map<string,int> onTableId2index;
+    map<Role,vector<string>> role2id;
+    bool gameOn = false;
+    vector<Role> rolsThisGame;
+    int whichRound = 0;
+    int votesNb = 0;
+    int failRdNbs = 0;
+    vector<int> succN(5);
+    vector<int> failN(5);
+    vector<char> stats(5);
+    vector<string> votedThisRound;
+}
 

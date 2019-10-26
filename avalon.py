@@ -78,7 +78,6 @@ def route_login():
     rep.set_cookie('custom_auth_session', username)
     return rep
 
-
 # create a logout route
 @app.server.route('/logout', methods=['POST'])
 def route_logout():
