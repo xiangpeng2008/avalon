@@ -5,3 +5,5 @@ venv
 .env
 tmp.*
 *.cpp.o
+*Bogo*
+*Geek*
