@@ -7,6 +7,7 @@
 #include <fstream>
 #include <sstream>
 #include <random> 
+#include <typeinfo>
 
 using namespace std;
 typedef int64_t ll;
@@ -19,11 +20,12 @@ typedef int64_t ll;
 
 class Role{
   public:
-    Role(const string & name,const bool & good,const string & discription):name(name), good(good),discription(discription){}
+    Role(const string & name,const bool & good,const string & discription):name(name), good(good),discription(discription){
+    }
     void setSkills(vector<Role*> roles){skill=roles;}
-    const string & name;
-    const string & discription;
-    const bool & good;
+    const string name;
+    const string discription;
+    const bool good;
     vector<Role*> skill;
 };
 
@@ -48,8 +50,6 @@ std::ostream &operator<<(std::ostream &os, Setting const &setting) {
   return os;
 }
 
-//Role Assassin("Assassin", false, "Minion of Mordred, you know"            );
-//Role Merlin  ("Merlin",   true,  "Knows evil, must remain hidden, you see");
 map<int,Setting*> settings;
 class Avalon{
   public:
@@ -80,6 +80,11 @@ class Avalon{
       return stream.str();
     }
 
+    string forceNewGame(){
+      gameOn=false;
+      return newgame();
+    }
+
     string newgame(){
       std::ostringstream stream;
       if(onTableId2index.size()<setting->nb){
@@ -87,9 +92,7 @@ class Avalon{
       } else if(gameOn){
 	stream<<"game is not finished, please don't start a new one now !\n";
       }else{
-	unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
-	shuffle (rolsThisGame.begin(), rolsThisGame.end(), std::default_random_engine(seed));
-
+	shuffle (rolsThisGame.begin(), rolsThisGame.end(), rng);
 	role2id.clear();
 	int idx=0;
 	for (auto const& it : onTableId2index) {
@@ -135,6 +138,7 @@ class Avalon{
 	  stream<<" "<<it<<":"<<*(rolsThisGame[onTableId2index[it]]);
 	}
       }
+      stream<<'\n';
       return stream.str();
     }
 
@@ -205,6 +209,8 @@ class Avalon{
       }
       return stream.str();
     }
+    string call(){
+    }
 
   private:
     int nbPeople;
@@ -222,12 +228,13 @@ class Avalon{
     vector<string> votedThisRound;
     const Role* AssassinPtr;
     const Role* MerlinPtr;
+    decltype(std::default_random_engine()) rng = std::default_random_engine(std::chrono::system_clock::now().time_since_epoch().count());
 };
 
 int main(){
   Role Merlin  ("Merlin",   true,  "Knows evil, must remain hidden, you see");
   Role Percival("Percival", true,  "you see"                                );
-  Role Servant ("Servant",  true,  "Loyal Servant of Arthur"                );
+  Role Servant ("Servant",  true,  "Loyal servant of Arthur"                );
   Role Assassin("Assassin", false, "Minion of Mordred, you know"            );
   Role Morgana ("Morgana",  false, "you know"                               );
   Role Oberon  ("Oberon",   false, "Unkonwn to Evil"                        );
@@ -266,6 +273,36 @@ int main(){
   cout<<avalon0.join("a3");
   cout<<avalon0.join("a4");
   cout<<avalon0.join("a5");
+  //loop(20){
+  cout<<avalon0.forceNewGame();
+  cout<<avalon0.who("a1");
+  cout<<avalon0.who("a2");
+  cout<<avalon0.who("a3");
+  cout<<avalon0.who("a4");
+  cout<<avalon0.who("a5");
+
+  cout<<avalon0.vote("a1",false);
+  cout<<avalon0.vote("a1",false);
+  cout<<avalon0.progress("a1");
+  cout<<avalon0.vote("a2",false);
+  cout<<avalon0.progress("a2");
+  cout<<avalon0.vote("a3",false);
+  cout<<avalon0.progress("a3");
+  cout<<avalon0.vote("a4",false);
+  cout<<avalon0.progress("a4");
+  cout<<avalon0.vote("a5",false);
+  cout<<avalon0.progress("a5");
+  cout<<avalon0.vote("a1",false);
+  cout<<avalon0.progress("a1");
+  cout<<avalon0.vote("a2",false);
+  cout<<avalon0.progress("a2");
+  cout<<avalon0.vote("a3",false);
+  cout<<avalon0.progress("a3");
+  cout<<avalon0.vote("a4",false);
+  cout<<avalon0.progress("a4");
+  cout<<avalon0.vote("a5",false);
+  cout<<avalon0.progress("a5");
+  //}
 
   return 0;
 }
