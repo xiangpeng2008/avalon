@@ -50,6 +50,7 @@ avalon_form = html.Div( [
                 {'label': 'show my profile',           'value': 'who'            },#我的身份
                 {'label': 'join',                      'value': 'join'           },#加入
                 {'label': 'set number of people *',    'value': 'set_nb_people'  },#设定游戏人数 
+                {'label': 'create room of * people',   'value': 'create_room'    },
                 ],
             value='',
             style={'fontSize': fontSize},

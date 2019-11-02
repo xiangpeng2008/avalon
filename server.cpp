@@ -69,10 +69,12 @@ std::ostream &operator<<(std::ostream &os, Setting const &setting) {
   return os;
 }
 
+Role * AssassinPtr, * MerlinPtr;
 std::map<int,Setting*> settings;
 class Avalon{
   public:
-    Avalon(const Role* AssassinPtr, const Role* MerlinPtr):AssassinPtr(AssassinPtr),MerlinPtr(MerlinPtr),succN(5),failN(5),stats(5){ };
+    //Avalon(const Role* AssassinPtr, const Role* MerlinPtr):AssassinPtr(AssassinPtr),MerlinPtr(MerlinPtr),succN(5),failN(5),stats(5){ };
+    Avalon():succN(5),failN(5),stats(5){ };
     std::string setNbPeople(int nb){
       std::ostringstream stream;
       if((nb > 10) or (nb < 5)){
@@ -247,8 +249,8 @@ class Avalon{
     std::vector<int>  failN;
     std::vector<std::string> stats;
     std::vector<std::string> votedThisRound;
-    const Role* AssassinPtr;
-    const Role* MerlinPtr;
+    //const Role* AssassinPtr;
+    //const Role* MerlinPtr;
     decltype(std::default_random_engine()) rng = std::default_random_engine(std::chrono::system_clock::now().time_since_epoch().count());
 };
 
@@ -256,6 +258,14 @@ void error(const char *msg)
 {
   perror(msg);
   exit(1);
+}
+
+std::vector<Avalon> rooms;
+std::string create_room(int nb){
+  rooms.push_back(Avalon());
+  std::ostringstream stream;
+  stream<<"room number is "<<rooms.size()-1<<"\n please ask others to join this room\n"<<rooms.back().setNbPeople(nb);
+  return stream.str();
 }
 
 std::string respondClient(Avalon& avalonInstant,std::string request){
@@ -297,8 +307,13 @@ std::string respondClient(Avalon& avalonInstant,std::string request){
     if(requestSize!=3){error("wrong args");}
     return avalonInstant.assassinate(splitedRequest[0],splitedRequest[2]);
   }
+  if(func=="create_room"){ 
+    if(requestSize!=3){error("wrong args");}
+    return create_room(std::stoi(splitedRequest[2]));
+  }
   return "";
 }
+
 
 int main(int argc, char *argv[]){
   Role Merlin  ("Merlin",   true,  "Knows evil, must remain hidden, you see");
@@ -333,7 +348,9 @@ int main(int argc, char *argv[]){
   Mordred .setSkills({&Assassin,&Morgana,&Minion});
   Minion  .setSkills({&Assassin,&Morgana,&Mordred});
 
-  Avalon avalon0(&Assassin,&Merlin);
+  AssassinPtr = &Assassin;
+  MerlinPtr   = &Merlin;
+  Avalon avalon0;
   std::cout<<avalon0.setNbPeople(5);
   std::cout<<avalon0.join("a1");
   std::cout<<avalon0.join("a2");
