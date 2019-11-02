@@ -5,13 +5,17 @@ from dash.dependencies import Input, Output, State
 import json
 import flask
 
-from qpython import qconnection
 import pandas as pd
 import numpy as np
 import re
+import socket
 
-q = qconnection.QConnection(host = 'localhost', port = 7778, pandas = True)
-q.open()
+
+
+HOST = '127.0.0.1'    # The remote host
+PORT = 20001          # The same port as used by the server
+serverCpp=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+serverCpp.connect((HOST, PORT))
 
 app = dash.Dash(
     __name__,
@@ -37,15 +41,15 @@ avalon_form = html.Div( [
         dcc.Dropdown(
             id='input_option',
             options=[
-                {'label': 'vote success', 'value': 'vote[`success]'},#投成功票
-                {'label': 'vote fail', 'value': 'vote[`fail]'},#投失败票
-                {'label': 'show game progress', 'value': 'progress`'},#游戏进度
-                {'label': 'assassinate *', 'value': 'assassinate'},#行刺
-                {'label': 'show people on this table', 'value': 'people_on_table`'},#玩家们
-                {'label': 'newgame', 'value': 'newgame`'},#开局
-                {'label': 'show my profile', 'value': 'who`'},#我的身份
-                {'label': 'join', 'value': 'join`'},#加入
-                {'label': 'set number of people *', 'value': 'set_nb_people'},#设定游戏人数 
+                {'label': 'vote success',              'value': 'vote,true'      },#投成功票
+                {'label': 'vote fail',                 'value': 'vote,false'     },#投失败票
+                {'label': 'show game progress',        'value': 'progress'       },#游戏进度
+                {'label': 'assassinate *',             'value': 'assassinate'    },#行刺
+                {'label': 'show people on this table', 'value': 'people_on_table'},#玩家们
+                {'label': 'newgame',                   'value': 'newgame'        },#开局
+                {'label': 'show my profile',           'value': 'who'            },#我的身份
+                {'label': 'join',                      'value': 'join'           },#加入
+                {'label': 'set number of people *',    'value': 'set_nb_people'  },#设定游戏人数 
                 ],
             value='',
             style={'fontSize': fontSize},
@@ -121,9 +125,10 @@ def update_output_div(click, input_opt, input_cmd, existe_value):
     print(session_cookie)
     if not input_opt:
         return existe_value,'',''
-    command='python["'+session_cookie+'";"'+input_opt+('[\\"'+input_cmd.replace(" ", "")+'\\"]' if input_cmd else '')+'"]'
+    command=session_cookie+','+input_opt+( ','+ input_cmd.replace(" ", "") if input_cmd else '')
     print('command: '+command)
-    qres=q.sendSync(command)
+    serverCpp.sendall(command.encode('utf-8'))
+    qres = serverCpp.recv(1024)
     print("qres is ")
     print(qres)
     if isinstance(qres, pd.core.frame.DataFrame):

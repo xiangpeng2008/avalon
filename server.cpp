@@ -260,39 +260,42 @@ void error(const char *msg)
 
 std::string respondClient(Avalon& avalonInstant,std::string request){
   const auto& splitedRequest = split(request,',');
-  std::string func = splitedRequest[0];
+  if(splitedRequest.size()<2){
+    return "invalid command";
+  }
+  std::string func = splitedRequest[1];
   auto requestSize = splitedRequest.size();
   if(func=="join"){ 
     if(requestSize!=2){error("wrong args");}
-    return avalonInstant.join(splitedRequest[1]);
+    return avalonInstant.join(splitedRequest[0]);
   }
   if(func=="forceNewGame"){
-    if(requestSize!=1){error("wrong args");}
+    if(requestSize!=2){error("wrong args");}
     return avalonInstant.forceNewGame();
   }
   if(func=="newgame"){ 
-    if(requestSize!=1){error("wrong args");}
+    if(requestSize!=2){error("wrong args");}
     return avalonInstant.newgame();
   }
   if(func=="peopleOnTable"){ 
-    if(requestSize!=1){error("wrong args");}
+    if(requestSize!=2){error("wrong args");}
     return avalonInstant.peopleOnTable();
   }
   if(func=="who"){ 
     if(requestSize!=2){error("wrong args");}
-    return avalonInstant.who(splitedRequest[1]);
+    return avalonInstant.who(splitedRequest[0]);
   }
   if(func=="progress"){ 
     if(requestSize!=2){error("wrong args");}
-    return avalonInstant.progress(splitedRequest[1]);
+    return avalonInstant.progress(splitedRequest[0]);
   }
   if(func=="vote"){ 
     if(requestSize!=3){error("wrong args");}
-    return avalonInstant.vote(splitedRequest[1],splitedRequest[2]=="true");
+    return avalonInstant.vote(splitedRequest[0],splitedRequest[2]=="true");
   }
   if(func=="assassinate"){ 
     if(requestSize!=3){error("wrong args");}
-    return avalonInstant.assassinate(splitedRequest[1],splitedRequest[2]);
+    return avalonInstant.assassinate(splitedRequest[0],splitedRequest[2]);
   }
   return "";
 }
