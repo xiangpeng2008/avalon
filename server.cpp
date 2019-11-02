@@ -69,7 +69,7 @@ std::ostream &operator<<(std::ostream &os, Setting const &setting) {
   return os;
 }
 
-map<int,Setting*> settings;
+std::map<int,Setting*> settings;
 class Avalon{
   public:
     Avalon(const Role* AssassinPtr, const Role* MerlinPtr):AssassinPtr(AssassinPtr),MerlinPtr(MerlinPtr),succN(5),failN(5),stats(5){ };
@@ -99,7 +99,7 @@ class Avalon{
       return stream.str();
     }
 
-    string forceNewGame(){
+    std::string forceNewGame(){
       gameOn = false;
       return newgame();
     }
@@ -140,6 +140,10 @@ class Avalon{
     }
     std::string who(std::string usrname){
       std::ostringstream stream;
+      if ( onTableId2index.find(usrname) == onTableId2index.end() ) {
+	stream<<usrname<<", you havn't joint yet\n";
+	return stream.str();
+      } 
       auto role = *(rolsThisGame[onTableId2index[usrname]]);
       std::vector<std::string> idsYouKnow;
       for(auto const & it: role.skill){
@@ -161,12 +165,13 @@ class Avalon{
       return stream.str();
     }
 
+    //todo rewrite progress
     std::string progress(std::string usrname){ 
       std::ostringstream stream;
       if(votesNb==0){
-	stream<<"task barrer succN failN stat\n";
+	stream<<"  task barrer succN failN stat\n";
 	loop(5){
-	  stream<<i+1<<' '<<setting->tasks[i]<<' '<<setting->barrer[i]<<' '<<succN[i]<<' '<<failN[i]<<' '<<stats[i]<<'\n';
+	  stream<<i+1<<"    "<<setting->tasks[i]<<"      "<<setting->barrer[i]<<"     "<<succN[i]<<"     "<<failN[i]<<"    "<<stats[i]<<'\n';
 	}
       }else{
 	stream<<usrname<<", only "<<votesNb<<" of "<<setting->tasks[whichRound]<<" people voted this round, please wait them to finish\n";
@@ -228,9 +233,6 @@ class Avalon{
       }
       return stream.str();
     }
-    string call(){
-    }
-
   private:
     int nbPeople;
     Setting* setting;
@@ -257,9 +259,7 @@ void error(const char *msg)
 }
 
 std::string respondClient(Avalon& avalonInstant,std::string request){
-  std::cout<<request.length()<<'\n';
-  const auto& splitedRequest = split(request.substr(0, request.size()-1),',');
-  std::cout<<splitedRequest.size()<<'\n';
+  const auto& splitedRequest = split(request,',');
   std::string func = splitedRequest[0];
   auto requestSize = splitedRequest.size();
   if(func=="join"){ 
@@ -330,7 +330,6 @@ int main(int argc, char *argv[]){
   Mordred .setSkills({&Assassin,&Morgana,&Minion});
   Minion  .setSkills({&Assassin,&Morgana,&Mordred});
 
-  //todo add usrname
   Avalon avalon0(&Assassin,&Merlin);
   std::cout<<avalon0.setNbPeople(5);
   std::cout<<avalon0.join("a1");
@@ -358,22 +357,23 @@ int main(int argc, char *argv[]){
   serv_addr.sin_port = htons(atoi(argv[1]));
 
   if (bind(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) error("ERROR on binding");
-  listen(sockfd,50);
 
   // The accept() call actually accepts an incoming connection
   clilen = sizeof(cli_addr);
-  newsockfd = accept(sockfd, (struct sockaddr *) &cli_addr, &clilen);
-
-  while(true){
-    bzero(buffer,256);
-    read(newsockfd,buffer,255);
-    printf("client: %s\n",buffer);
-    std::string clienStr = respondClient(avalon0, std::string(buffer));
-    std::cout<<clienStr<<'\n';
-    send(newsockfd, clienStr.c_str(), sizeof(clienStr), 0);
+  listen(sockfd,50);
+  while((newsockfd = accept(sockfd, (struct sockaddr *) &cli_addr, &clilen))){
+    while(true){
+      bzero(buffer,256);
+      read(newsockfd,buffer,255);
+      printf("client: %s\n",buffer);
+      std::string clienStr = respondClient(avalon0, std::string(buffer));
+      std::cout<<clienStr<<'\n';
+      send(newsockfd, clienStr.c_str(), clienStr.length(), 0);
+    }
+    //close(newsockfd);
+    shutdown(newsockfd, SHUT_RDWR);
   }
 
-  close(newsockfd);
   close(sockfd);
   return 0; 
 }
