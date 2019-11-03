@@ -371,7 +371,7 @@ int main(int argc, char *argv[]){
 
   sockfd =  socket(AF_INET, SOCK_STREAM, 0);
   // clear address structure
-  bzero((char *) &serv_addr, sizeof(serv_addr));
+  memset((char *) &serv_addr, '\0', sizeof(serv_addr));
 
   serv_addr.sin_family = AF_INET;  
   serv_addr.sin_addr.s_addr = INADDR_ANY;  
@@ -384,7 +384,7 @@ int main(int argc, char *argv[]){
   listen(sockfd,50);
   while((newsockfd = accept(sockfd, (struct sockaddr *) &cli_addr, &clilen))){
     while(true){
-      bzero(buffer,256);
+      memset(buffer, '\0', 256);
       read(newsockfd,buffer,255);
       printf("client: %s\n",buffer);
       auto bufferStr = std::string(buffer);
