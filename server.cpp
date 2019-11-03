@@ -73,8 +73,7 @@ Role * AssassinPtr, * MerlinPtr;
 std::map<int,Setting*> settings;
 class Avalon{
   public:
-    //Avalon(const Role* AssassinPtr, const Role* MerlinPtr):AssassinPtr(AssassinPtr),MerlinPtr(MerlinPtr),succN(5),failN(5),stats(5){ };
-    Avalon():succN(5),failN(5),stats(5){ };
+    Avalon(int const roomNb):succN(5),failN(5),stats(5),roomNb(roomNb){ };
     std::string setNbPeople(int nb){
       std::ostringstream stream;
       if((nb > 10) or (nb < 5)){
@@ -84,7 +83,7 @@ class Avalon{
 	setting=settings[nb];
 	rolsThisGame = std::vector<Role*>(setting->roles);
 	onTableId2index.clear();
-	stream << "we are a "<<nb<<" people game, the rols are: "<<(*setting)<<"\nPlease ask others to join, and start a new game after everyone join\n";
+	stream << "we are a "<<nb<<" people game, the rols are: "<<(*setting)<<"\nPlease ask others to join room "<<roomNb<<", and start a new game after everyone join\n";
       }
       return stream.str();
     }
@@ -167,7 +166,6 @@ class Avalon{
       return stream.str();
     }
 
-    //todo rewrite progress
     std::string progress(std::string usrname){ 
       std::ostringstream stream;
       if(votesNb==0){
@@ -245,12 +243,11 @@ class Avalon{
     int whichRound = 0;
     int votesNb = 0;
     int failRdNbs = 0;
+    int const roomNb;
     std::vector<int>  succN;
     std::vector<int>  failN;
     std::vector<std::string> stats;
     std::vector<std::string> votedThisRound;
-    //const Role* AssassinPtr;
-    //const Role* MerlinPtr;
     decltype(std::default_random_engine()) rng = std::default_random_engine(std::chrono::system_clock::now().time_since_epoch().count());
 };
 
@@ -262,23 +259,38 @@ void error(const char *msg)
 
 std::vector<Avalon> rooms;
 std::string create_room(int nb){
-  rooms.push_back(Avalon());
-  std::ostringstream stream;
-  stream<<"room number is "<<rooms.size()-1<<"\n please ask others to join this room\n"<<rooms.back().setNbPeople(nb);
-  return stream.str();
+  rooms.push_back(Avalon(rooms.size()));
+  return rooms.back().setNbPeople(nb);
 }
 
-std::string respondClient(Avalon& avalonInstant,std::string request){
+std::map<std::string,int> usrRoomNb;
+std::string respondClient(std::string request){
   const auto& splitedRequest = split(request,',');
   if(splitedRequest.size()<2){
     return "invalid command";
   }
   std::string func = splitedRequest[1];
   auto requestSize = splitedRequest.size();
-  if(func=="join"){ 
-    if(requestSize!=2){error("wrong args");}
-    return avalonInstant.join(splitedRequest[0]);
+  if(func=="create_room"){ 
+    if(requestSize!=3){error("wrong args");}
+    return create_room(std::stoi(splitedRequest[2]));
   }
+  const auto & usrname = splitedRequest[0];
+  if(func=="join"){ 
+    if(requestSize!=3){error("wrong args");}
+    int roomNb=std::stoi(splitedRequest[2]);
+    if((roomNb>=rooms.size()) or (roomNb<0) ){
+      return "Room doesn't exists\n";
+    }
+    usrRoomNb[usrname] = roomNb;
+    return rooms[roomNb].join(usrname);
+  }
+
+  if ( usrRoomNb.find(usrname) == usrRoomNb.end() ) {
+    return "please join or create a room first\n";
+  }
+  auto& avalonInstant = rooms[usrRoomNb[usrname]];
+
   if(func=="forceNewGame"){
     if(requestSize!=2){error("wrong args");}
     return avalonInstant.forceNewGame();
@@ -293,23 +305,19 @@ std::string respondClient(Avalon& avalonInstant,std::string request){
   }
   if(func=="who"){ 
     if(requestSize!=2){error("wrong args");}
-    return avalonInstant.who(splitedRequest[0]);
+    return avalonInstant.who(usrname);
   }
   if(func=="progress"){ 
     if(requestSize!=2){error("wrong args");}
-    return avalonInstant.progress(splitedRequest[0]);
+    return avalonInstant.progress(usrname);
   }
   if(func=="vote"){ 
     if(requestSize!=3){error("wrong args");}
-    return avalonInstant.vote(splitedRequest[0],splitedRequest[2]=="true");
+    return avalonInstant.vote(usrname,splitedRequest[2]=="true");
   }
   if(func=="assassinate"){ 
     if(requestSize!=3){error("wrong args");}
-    return avalonInstant.assassinate(splitedRequest[0],splitedRequest[2]);
-  }
-  if(func=="create_room"){ 
-    if(requestSize!=3){error("wrong args");}
-    return create_room(std::stoi(splitedRequest[2]));
+    return avalonInstant.assassinate(usrname,splitedRequest[2]);
   }
   return "";
 }
@@ -350,14 +358,6 @@ int main(int argc, char *argv[]){
 
   AssassinPtr = &Assassin;
   MerlinPtr   = &Merlin;
-  Avalon avalon0;
-  std::cout<<avalon0.setNbPeople(5);
-  std::cout<<avalon0.join("a1");
-  std::cout<<avalon0.join("a2");
-  std::cout<<avalon0.join("a3");
-  std::cout<<avalon0.join("a4");
-  std::cout<<avalon0.join("a5");
-
 
   int sockfd, newsockfd;
   socklen_t clilen;
@@ -386,7 +386,11 @@ int main(int argc, char *argv[]){
       bzero(buffer,256);
       read(newsockfd,buffer,255);
       printf("client: %s\n",buffer);
-      std::string clienStr = respondClient(avalon0, std::string(buffer));
+      auto bufferStr = std::string(buffer);
+      if(bufferStr.length()==0){
+	break;
+      }
+      std::string clienStr = respondClient(bufferStr);
       std::cout<<clienStr<<'\n';
       send(newsockfd, clienStr.c_str(), clienStr.length(), 0);
     }

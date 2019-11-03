@@ -65,7 +65,7 @@ avalon_form = html.Div( [
 @app.server.route('/login', methods=['POST'])
 def route_login():
     data = flask.request.form
-    username = re.sub(' ', '', data.get('username'))
+    username = re.sub('[ ,]', '', data.get('username'))
     password = data.get('password')
 
     if not username or not password=="pass123":
