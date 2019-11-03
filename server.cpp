@@ -15,6 +15,7 @@
 #include <unistd.h>
 #include <sys/types.h> 
 #include <netinet/in.h>
+#include <string.h>
 
 typedef int64_t ll;
 #define loop(n) for(int64_t i=0;i<n;++i)
