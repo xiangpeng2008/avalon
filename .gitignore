@@ -7,3 +7,4 @@ tmp.*
 *.cpp.o
 *Bogo*
 *Geek*
+nohup.out
