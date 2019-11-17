@@ -122,7 +122,6 @@ def update_output_div(click, input_opt, input_cmd, existe_value):
     session_cookie = flask.request.cookies.get('custom_auth_session')
     if not session_cookie:
         return json.dumps(['not logged in, please go to click [ivoryhuo.com/login](http://ivoryhuo.com/login) to login']),'',''
-        # return ['not logged in, please go to click [127.0.0.1:8050/login](http://127.0.0.1:8050/login) to login'],'',''
     print(session_cookie)
     if not input_opt:
         return existe_value,'',''

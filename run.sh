@@ -8,4 +8,3 @@ nohup ./server.cpp.o 20001 &> log/cpp_$currentTime.txt &
 sleep 3
 source ~/venv37/bin/activate
 nohup gunicorn --bind 0.0.0.0:7777 avalon:server &> log/dash_$currentTime.txt &
-gunicorn --bind 0.0.0.0:7777 avalon:server 
